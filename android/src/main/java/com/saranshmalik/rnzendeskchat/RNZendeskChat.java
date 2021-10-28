@@ -55,13 +55,6 @@ public class RNZendeskChat extends ReactContextBaseJavaModule {
     return "RNZendeskChat";
   }
 
-  private String getBotName(ReadableMap options){
-    if(options.hasKey("botName")){
-      return options.getString("botName");
-    }
-    return "Chat Bot";
-  }
-
   /* helper methods */
   private Boolean getBoolean(ReadableMap options, String key){
     if(options.hasKey(key)){
@@ -199,7 +192,8 @@ public class RNZendeskChat extends ReactContextBaseJavaModule {
     setUserIdentity(options);
     setVisitorInfo(options);
     setUserIdentity(options);
-    String botName = getBotName(options);
+    String botName = getString(options,"botName");
+    botName = botName == null ? "bot name" : botName;
     ChatConfiguration chatConfiguration = ChatConfiguration.builder()
       .withAgentAvailabilityEnabled(true)
       .withOfflineFormEnabled(true)
