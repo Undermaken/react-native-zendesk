@@ -14,6 +14,10 @@ import com.facebook.react.bridge.ReadableMap;
 import com.zendesk.logger.Logger;
 
 import java.lang.String;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import zendesk.chat.Chat;
 import zendesk.chat.ChatConfiguration;
 import zendesk.chat.ChatEngine;
@@ -22,26 +26,41 @@ import zendesk.chat.ProfileProvider;
 import zendesk.chat.PushNotificationsProvider;
 import zendesk.chat.Providers;
 import zendesk.chat.VisitorInfo;
+import zendesk.configurations.Configuration;
 import zendesk.core.JwtIdentity;
 import zendesk.core.AnonymousIdentity;
 import zendesk.core.Identity;
 import zendesk.messaging.MessagingActivity;
 import zendesk.core.Zendesk;
+import zendesk.support.CustomField;
 import zendesk.support.Support;
 import zendesk.support.guide.HelpCenterActivity;
 import zendesk.support.guide.ViewArticleActivity;
 import zendesk.answerbot.AnswerBot;
 import zendesk.answerbot.AnswerBotEngine;
 import zendesk.support.SupportEngine;
+import zendesk.support.request.RequestActivity;
+import zendesk.support.requestlist.RequestListActivity;
 
 public class RNZendeskChat extends ReactContextBaseJavaModule {
 
   private ReactContext appContext;
   private static final String TAG = "ZendeskChat";
+  private final HashMap<String, CustomField> customFields;
+  // Contains the aggregate of all the logs sent by the app
+  private StringBuffer log;
 
   public RNZendeskChat(ReactApplicationContext reactContext) {
     super(reactContext);
     appContext = reactContext;
+    customFields = new HashMap<>();
+    log = new StringBuffer();
+  }
+
+  @ReactMethod
+  public void reset() {
+    log.delete(0, log.length());
+    customFields.clear();
   }
 
   @Override
@@ -49,12 +68,21 @@ public class RNZendeskChat extends ReactContextBaseJavaModule {
     return "RNZendeskChat";
   }
 
-  private String getBotName(ReadableMap options){
-    if(options.hasKey("botName")){
-      return options.getString("botName");
+  /* helper methods */
+  private Boolean getBoolean(ReadableMap options, String key){
+    if(options.hasKey(key)){
+      return options.getBoolean(key);
     }
-    return "Chat Bot";
+    return null;
   }
+
+  private String getString(ReadableMap options, String key){
+    if(options.hasKey(key)){
+      return options.getString(key);
+    }
+    return null;
+  }
+
 
   @ReactMethod
   public void setVisitorInfo(ReadableMap options) {
@@ -75,19 +103,23 @@ public class RNZendeskChat extends ReactContextBaseJavaModule {
       return;
     }
     VisitorInfo.Builder builder = VisitorInfo.builder();
-    if (options.hasKey("name")) {
-      builder = builder.withName(options.getString("name"));
+    String name = getString(options,"name");
+    String email = getString(options,"email");
+    String phone = getString(options,"phone");
+    String department = getString(options,"department");
+    if (name != null) {
+      builder = builder.withName(name);
     }
-    if (options.hasKey("email")) {
-      builder = builder.withEmail(options.getString("email"));
+    if (email != null) {
+      builder = builder.withEmail(email);
     }
-    if (options.hasKey("phone")) {
-      builder = builder.withPhoneNumber(options.getString("phone"));
+    if (phone != null) {
+      builder = builder.withPhoneNumber(phone);
     }
     VisitorInfo visitorInfo = builder.build();
     profileProvider.setVisitorInfo(visitorInfo, null);
-    if (options.hasKey("department"))
-      chatProvider.setDepartment(options.getString("department"), null);
+    if (department != null)
+      chatProvider.setDepartment(department, null);
 
   }
 
@@ -123,27 +155,77 @@ public class RNZendeskChat extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void setUserIdentity(ReadableMap options) {
-    if (options.hasKey("token")) {
-      Identity identity = new JwtIdentity(options.getString("token"));
+    String token = getString(options,"token");
+    if (token != null) {
+      Identity identity = new JwtIdentity(token);
       Zendesk.INSTANCE.setIdentity(identity);
     } else {
-      String name = options.getString("name");
-      String email = options.getString("email");
-      Identity identity = new AnonymousIdentity.Builder()
-        .withNameIdentifier(name).withEmailIdentifier(email).build();
+      String name = getString(options,"name");
+      String email = getString(options,"email");
+
+      AnonymousIdentity.Builder builder = new AnonymousIdentity.Builder();
+
+      if(name != null){
+          builder.withNameIdentifier(name);
+      }
+      if(email != null){
+          builder.withEmailIdentifier(email);
+      }
+
+      Identity identity = builder.build();
       Zendesk.INSTANCE.setIdentity(identity);
     }
     checkIdentity();
   }
 
   @ReactMethod
+  public void addTicketCustomField(String key, String value){
+    CustomField customField = new CustomField(Long.parseLong(key), value);
+    this.customFields.put(key, customField);
+  }
+
+  @ReactMethod
+  public void appendLog(String log){
+    Integer logCapacity = 60000;
+
+    this.log.insert(0, "\n"+log);
+    this.log = new StringBuffer(this.log.substring(0, Math.max(0, Math.min(this.log.length()-1, logCapacity))));
+  }
+
+  @ReactMethod
+  public void openTicket(){
+    Activity activity = getCurrentActivity();
+
+      // Add log custom field
+    Long logId = 4413278012049L;
+    customFields.put(logId.toString(), new CustomField(logId, this.log.toString()));
+
+      // Open a ticket
+      RequestActivity.builder()
+          .withCustomFields(new ArrayList(customFields.values()))
+          .show(activity);
+  }
+
+  @ReactMethod
+  public void showTickets(){
+      Activity activity = getCurrentActivity();
+
+      // Show the user's tickets
+      RequestListActivity.builder()
+        .withContactUsButtonVisible(false)
+        .show(activity);
+  }
+
+  @ReactMethod
   public void showHelpCenter(ReadableMap options) {
     Activity activity = getCurrentActivity();
-    if (options.hasKey("withChat")) {
+    Boolean withChat = getBoolean(options,"withChat");
+    Boolean disableTicketCreation = getBoolean(options,"withChat");
+    if (withChat) {
       HelpCenterActivity.builder()
         .withEngines(ChatEngine.engine())
         .show(activity);
-    } else if (options.hasKey("disableTicketCreation")) {
+    } else if (disableTicketCreation) {
       HelpCenterActivity.builder()
         .withContactUsButtonVisible(false)
         .withShowConversationsMenuButton(false)
@@ -158,10 +240,9 @@ public class RNZendeskChat extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void startChat(ReadableMap options) {
-    setUserIdentity(options);
     setVisitorInfo(options);
-    setUserIdentity(options);
-    String botName = getBotName(options);
+    String botName = getString(options,"botName");
+    botName = botName == null ? "bot name" : botName;
     ChatConfiguration chatConfiguration = ChatConfiguration.builder()
       .withAgentAvailabilityEnabled(true)
       .withOfflineFormEnabled(true)

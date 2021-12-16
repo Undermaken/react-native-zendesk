@@ -1,4 +1,4 @@
-declare module 'react-native-zendesk-v2' {
+declare module 'io-react-native-zendesk' {
 
   // function to display chat box
   export function startChat(chatOptions: ChatOptions): void;
@@ -14,6 +14,21 @@ declare module 'react-native-zendesk-v2' {
 
   // function to display help center UI
   export function showHelpCenter(chatOptions: ChatOptions): void;
+
+  // function to add a ticket custom field
+  export function addTicketCustomField(key: string, value: string): void;
+
+  // function to append a new line to the ticket log
+  export function appendLog(log: string)
+
+  // remove log data and custom fields
+  export function reset(): void;
+
+  // function to open a ticket
+  export function openTicket(): void;
+
+  // function to shows all the tickets of the user
+  export function showTickets(): void;
 
   // function to set visitor info in chat
   export function setVisitorInfo(visitorInfo: UserInfo): void;
@@ -50,11 +65,7 @@ declare module 'react-native-zendesk-v2' {
     url: string,
   }
 
-  interface UserInfo {
-    // user's name
-    name: string
-    // user's email
-    email: string
+  interface UserInfo extends AnonymousIdentity{
     // user's phone
     phone?: number
     // department to redirect the chat
@@ -69,9 +80,9 @@ declare module 'react-native-zendesk-v2' {
 
   interface AnonymousIdentity {
     // user's name
-    name: string
+    name?: string
     // user's email
-    email: string
+    email?: string
   }
 
 }
