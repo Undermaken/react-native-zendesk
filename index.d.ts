@@ -1,4 +1,4 @@
-declare module 'react-native-zendesk-v2' {
+declare module 'io-react-native-zendesk' {
 
   // function to display chat box
   export function startChat(chatOptions: ChatOptions): void;
@@ -14,6 +14,39 @@ declare module 'react-native-zendesk-v2' {
 
   // function to display help center UI
   export function showHelpCenter(chatOptions: ChatOptions): void;
+
+  // function to add a ticket custom field
+  export function addTicketCustomField(key: string, value: string): void;
+
+  // function to append a new line to the ticket log
+  export function appendLog(log: string)
+
+  // add a new tag to the ticket
+  export function addTicketTag(tag: string)
+
+  // remove custom fields
+  export function resetCustomFields(): void;
+
+  // remove tags
+  export function resetTags(): void;
+
+  // remove log data
+  export function resetLog(): void;
+
+  // iOS only - close the current zendesk view (ticket creation, tickets list) if any
+  export function dismiss(): void;
+
+  // function to open a ticket
+  export function openTicket(): void;
+
+  // function to shows all the tickets of the user
+  export function showTickets(): void;
+
+  // function that return the number of tickets created by the user
+  export function hasOpenedTickets(): Promise<number>;
+
+  // function that return the number of unread messages by the user
+  export function getTotalNewResponses(): Promise<number>;
 
   // function to set visitor info in chat
   export function setVisitorInfo(visitorInfo: UserInfo): void;
@@ -48,13 +81,11 @@ declare module 'react-native-zendesk-v2' {
     clientId: string,
     // support url of zendesk account
     url: string,
+    // id of the log custom field
+    logId: string
   }
 
-  interface UserInfo {
-    // user's name
-    name: string
-    // user's email
-    email: string
+  interface UserInfo extends AnonymousIdentity{
     // user's phone
     phone?: number
     // department to redirect the chat
@@ -69,9 +100,9 @@ declare module 'react-native-zendesk-v2' {
 
   interface AnonymousIdentity {
     // user's name
-    name: string
+    name?: string
     // user's email
-    email: string
+    email?: string
   }
 
 }
